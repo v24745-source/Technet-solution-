@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<title>TECHNET SOLUTION — Dispatch Board</title>
+<style>
+  :root{
+    --paper: #F3F8FE;
+    --paper-dark: #E4EFFB;
+    --ink: #142943;
+    --ink-soft: #6C84A0;
+    --stamp-red: #E5484D;
+    --stamp-green: #17A673;
+    --line: #DCE8F7;
+    --amber: #F5A524;
+    --white: #FFFFFF;
+    --blue-1: #175CD3;
+    --blue-2: #2E90FA;
+    --blue-3: #53B1FD;
+  }
+  *{box-sizing:border-box;}
+  html{background:linear-gradient(160deg,#0E4FA3 0%, #1C7DD6 45%, #57B4E8 100%);}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:linear-gradient(160deg,#0E4FA3 0%, #1C7DD6 45%, #57B4E8 100%);
+    color:var(--ink);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    padding:28px 14px;
+    display:flex;justify-content:center;
+  }
+  .wrap{
+    max-width:520px;width:100%;margin:0 auto;
+    background:var(--paper);
+    border-radius:28px;
+    box-shadow:0 20px 60px rgba(6,40,90,0.35), 0 2px 8px rgba(6,40,90,0.15);
+    overflow:hidden;
+    padding-bottom:26px;
+  }
+
+  /* Header — gradient app banner */
+  header{
+    display:flex;justify-content:space-between;align-items:center;
+    background:linear-gradient(120deg, var(--blue-1), var(--blue-2) 60%, var(--blue-3));
+    padding:26px 22px 22px;
+    color:#fff;
+    border-radius:28px 28px 0 0;
+    position:relative;
+  }
+  header::after{
+    content:'';position:absolute;left:0;right:0;bottom:-1px;height:22px;
+    background:var(--paper);border-radius:20px 20px 0 0;
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .logo-badge{
+    width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,0.18);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;
+    letter-spacing:.5px;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.35);
+    flex-shrink:0;
+  }
+  .brand .eyebrow{
+    font-size:11px;letter-spacing:2px;color:rgba(255,255,255,0.8);text-transform:uppercase;font-weight:700;
+  }
+  .brand h1{
+    margin:1px 0 0;font-size:19px;letter-spacing:.2px;font-weight:800;color:#fff;
+  }
+  .today{
+    font-size:11.5px;color:rgba(255,255,255,0.85);text-align:right;line-height:1.5;font-weight:600;
+  }
+
+  .body-inner{padding:0 20px;}
+
+  /* Tabs — segmented pill control */
+  .tabs{
+    display:flex;gap:4px;margin:6px 0 20px;background:var(--paper-dark);
+    border-radius:14px;padding:4px;position:relative;
+  }
+  .tab{
+    flex:1;text-align:center;padding:10px 12px;font-size:13px;font-weight:700;letter-spacing:.1px;
+    border-radius:11px;cursor:pointer;color:var(--ink-soft);transition:all .18s ease;
+  }
+  .tab.active{background:var(--white);color:var(--blue-1);box-shadow:0 3px 10px rgba(23,92,211,0.18);}
+  .panel{
+    background:transparent;padding:0;
+  }
+  .hidden{display:none !important;}
+
+  /* Form */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:600px){.grid{grid-template-columns:1fr;}}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.full{grid-column:1/-1;}
+  label{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-soft);}
+  input,select,textarea{
+    font-family:inherit;font-size:14.5px;padding:11px 13px;
+    border:1.5px solid var(--line);border-radius:12px;background:var(--white);color:var(--ink);
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:none;border-color:var(--blue-2);box-shadow:0 0 0 4px rgba(46,144,250,0.15);
+  }
+  textarea{resize:vertical;min-height:56px;}
+  .btn{
+    font-family:inherit;font-weight:700;font-size:14px;letter-spacing:.2px;
+    padding:12px 22px;border-radius:999px;border:none;cursor:pointer;
+    background:linear-gradient(120deg, var(--blue-1), var(--blue-2));color:var(--white);
+    transition:transform .12s, box-shadow .12s;
+    box-shadow:0 4px 14px rgba(23,92,211,0.35);
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(23,92,211,0.45);}
+  .btn.secondary{background:var(--white);border:1.5px solid var(--line);color:var(--ink);box-shadow:none;}
+  .btn.secondary:hover{border-color:var(--blue-2);color:var(--blue-1);}
+  .btn.small{padding:8px 15px;font-size:12.5px;}
+  .btn.green{background:linear-gradient(120deg, #17A673, #2BC48F);box-shadow:0 4px 14px rgba(23,166,115,0.3);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+  form{margin-bottom:6px;}
+  .form-actions{display:flex;justify-content:flex-end;margin-top:16px;}
+
+  /* Ticket cards */
+  .section-title{
+    font-size:11.5px;letter-spacing:1.5px;font-weight:800;
+    text-transform:uppercase;color:var(--ink-soft);margin:26px 0 12px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .section-title::after{content:'';flex:1;border-top:1.5px solid var(--line);}
+
+  .ticket{
+    position:relative;background:var(--white);border:1px solid var(--line);
+    border-left:4px solid var(--blue-2);
+    border-radius:16px;padding:16px 18px;margin-bottom:12px;
+    box-shadow:0 2px 10px rgba(20,41,67,0.06);
+    transition:box-shadow .15s, transform .15s;
+  }
+  .ticket:hover{box-shadow:0 6px 18px rgba(20,41,67,0.1);}
+  .ticket[data-priority="High"]{border-left-color:var(--stamp-red);}
+  .ticket[data-priority="Medium"]{border-left-color:var(--amber);}
+  .ticket[data-priority="Low"]{border-left-color:var(--ink-soft);}
+  .ticket-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
+  .ticket-id{font-size:11.5px;color:var(--ink-soft);letter-spacing:.3px;font-weight:600;}
+  .ticket-employee{font-size:16px;font-weight:800;margin:2px 0 6px;color:var(--ink);}
+  .stamp{
+    font-weight:800;font-size:10.5px;letter-spacing:.8px;
+    padding:5px 11px;border-radius:999px;text-transform:uppercase;
+    white-space:nowrap;
+  }
+  .stamp.high{color:#fff;background:var(--stamp-red);}
+  .stamp.medium{color:#fff;background:var(--amber);}
+  .stamp.low{color:#fff;background:var(--ink-soft);}
+  .stamp.done{color:#fff;background:var(--stamp-green);}
+
+  .ticket-row{font-size:13.5px;margin:5px 0;line-height:1.5;color:var(--ink);}
+  .ticket-row b{color:var(--ink-soft);font-weight:700;}
+  .ticket-links{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;}
+  a.maplink{
+    font-size:12.5px;font-weight:700;color:var(--blue-1);text-decoration:none;
+    background:var(--paper-dark);padding:6px 12px;border-radius:999px;
+  }
+  .ticket-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px;}
+  .status-pill{
+    font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px;letter-spacing:.2px;
+  }
+  .status-pending{background:#FEF0D9;color:#B76E00;}
+  .status-started{background:#DBEAFE;color:#175CD3;}
+  .status-completed{background:#D3F5E8;color:#0E8A5F;}
+  .status-issue{background:#FDE2E2;color:#C0292E;}
+
+  .empty{
+    text-align:center;padding:36px 20px;color:var(--ink-soft);font-size:13.5px;
+    border:1.5px dashed var(--line);border-radius:16px;background:var(--white);
+  }
+
+  .note-box{margin-top:10px;font-size:13px;color:var(--ink-soft);background:var(--paper-dark);padding:9px 12px;border-radius:10px;border:none;}
+
+  .field-select{display:flex;gap:10px;align-items:flex-end;margin-bottom:6px;flex-wrap:wrap;}
+  .field-select .field{flex:1;min-width:180px;}
+
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--white);padding:11px 22px;border-radius:999px;
+    font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s, bottom .25s;
+    z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.25);
+  }
+  .toast.show{opacity:1;bottom:30px;}
+
+  .hint{font-size:12.5px;color:var(--ink-soft);margin:2px 0 16px;line-height:1.5;}
+
+  .stat-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .stat-chip{
+    flex:1;min-width:76px;background:var(--white);border:1px solid var(--line);border-radius:14px;
+    padding:10px 12px;text-align:center;
+  }
+  .stat-chip .num{font-size:18px;font-weight:800;color:var(--blue-1);}
+  .stat-chip .lbl{font-size:10px;color:var(--ink-soft);font-weight:700;letter-spacing:.3px;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="logo-badge">TS</div>
+      <div>
+        <span class="eyebrow">TECHNET SOLUTION</span>
+        <h1>Ticket System</h1>
+      </div>
+    </div>
+    <div class="today" id="todayDate"></div>
+  </header>
+
+  <div class="body-inner">
+
+  <div id="storageWarning" class="hidden" style="background:#FDE2E2;color:#9A1C22;border:1.5px solid #F3A9AC;border-radius:14px;padding:12px 14px;margin:14px 0;font-size:12.5px;line-height:1.6;font-weight:600;">
+    ⚠️ Firebase se connect nahi ho pa raha. Internet check karo, ya Firebase Database rules confirm karo (test mode enabled honi chahiye).
+    <div id="storageWarningDetail" style="margin-top:6px;font-weight:800;font-family:monospace;font-size:11px;word-break:break-all;"></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab" data-tab="office">🏢 Office</div>
+    <div class="tab active" data-tab="field">📍 Field</div>
+  </div>
+
+  <!-- OFFICE PANEL -->
+  <div class="panel hidden" id="panel-office">
+    <p class="hint">Yahan se naya kaam assign karo — customer address ka Google Maps link daalo, employee use "Field" tab me apna naam select karke dekh lega.</p>
+    <form id="ticketForm">
+      <div class="grid">
+        <div class="field">
+          <label>Employee Naam</label>
+          <input type="text" id="f-employee" placeholder="e.g. Ramesh" required>
+        </div>
+        <div class="field">
+          <label>Employee WhatsApp Number</label>
+          <input type="tel" id="f-phone" placeholder="e.g. 9876543210">
+        </div>
+        <div class="field">
+          <label>Customer Naam</label>
+          <input type="text" id="f-customer" placeholder="e.g. Sharma Ji" required>
+        </div>
+        <div class="field">
+          <label>Customer Mobile Number</label>
+          <input type="tel" id="f-customer-mobile" placeholder="e.g. 9876543210" required>
+        </div>
+        <div class="field full">
+          <label>Customer Address</label>
+          <input type="text" id="f-address" placeholder="Pura address likho" required>
+        </div>
+        <div class="field full">
+          <label>Google Maps Link (optional)</label>
+          <input type="url" id="f-maps" placeholder="https://maps.google.com/...">
+        </div>
+
+        <div class="field">
+          <label>Kaam Type</label>
+          <select id="f-kaam-type">
+            <option value="Laptop Repair">Laptop Repair</option>
+            <option value="Computer Repair">Computer Repair</option>
+            <option value="All Repair">All Repair</option>
+            <option value="Software Installation">Software Installation</option>
+            <option value="Hardware Replacement">Hardware Replacement</option>
+            <option value="Virus/Formatting">Virus Removal / Formatting</option>
+            <option value="Data Recovery">Data Recovery</option>
+            <option value="Networking/WiFi Setup">Networking / WiFi Setup</option>
+            <option value="Printer/Peripheral Setup">Printer / Peripheral Setup</option>
+            <option value="AMC/Maintenance">AMC / Maintenance</option>
+            <option value="Custom">✏️ Custom / Other</option>
+          </select>
+        </div>
+        <div class="field hidden" id="wrap-kaam-custom">
+          <label>Custom Kaam Naam</label>
+          <input type="text" id="f-kaam-custom" placeholder="Kaam ka naam likho">
+        </div>
+
+        <div class="field full">
+          <label>Kaam ka Detail</label>
+          <textarea id="f-detail" placeholder="Kya karna hai" required></textarea>
+        </div>
+        <div class="field full">
+          <label>Part Name (optional)</label>
+          <input type="text" id="f-part" placeholder="e.g. RAM 8GB, SSD 256GB, Charger, Keyboard">
+        </div>
+
+        <div class="field">
+          <label>Priority</label>
+          <select id="f-priority">
+            <option value="High">High</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Cost (₹)</label>
+          <input type="number" id="f-cost" placeholder="e.g. 500" min="0" step="1">
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="field">
+          <label>Time Slot</label>
+          <select id="f-time-type">
+            <option value="">— Select karo —</option>
+            <option value="Subah (9 AM - 12 PM)">Subah (9 AM - 12 PM)</option>
+            <option value="Dopahar (12 PM - 3 PM)">Dopahar (12 PM - 3 PM)</option>
+            <option value="Sham (3 PM - 6 PM)">Sham (3 PM - 6 PM)</option>
+            <option value="Raat (6 PM - 9 PM)">Raat (6 PM - 9 PM)</option>
+            <option value="Custom">✏️ Custom Time</option>
+          </select>
+        </div>
+        <div class="field full hidden" id="wrap-time-custom">
+          <label>Custom Time</label>
+          <input type="text" id="f-time-custom" placeholder="e.g. 10:30 AM - 11:00 AM">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn">Ticket Bhejo →</button>
+      </div>
+    </form>
+    <div id="waPrompt" class="note-box hidden" style="margin-top:10px;"></div>
+
+    <div class="section-title">Data &amp; Backup</div>
+    <div id="statsBox" style="margin-bottom:12px;"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+      <button class="btn small secondary" onclick="manualSync()">🔄 Sync</button>
+      <button class="btn small secondary" onclick="exportExcel()">⬇ Excel Download</button>
+      <button class="btn small secondary" onclick="emailBackup()">📧 Email Backup (Gmail)</button>
+    </div>
+
+    <div class="section-title">Sabhi Tickets</div>
+    <div id="officeList"></div>
+  </div>
+
+  <!-- FIELD PANEL -->
+  <div class="panel" id="panel-field">
+    <div class="field-select">
+      <div class="field">
+        <label>Apna Naam Select Karo</label>
+        <select id="fieldEmployeeSelect">
+          <option value="">— Naam chuno —</option>
+        </select>
+      </div>
+    </div>
+    <div id="fieldList"></div>
+  </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="modalOverlay" class="hidden" style="position:fixed;inset:0;background:rgba(10,20,35,0.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:20px;padding:22px;max-width:340px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+    <div id="modalTitle" style="font-size:15px;font-weight:800;color:#16283E;margin-bottom:12px;"></div>
+    <input id="modalInput" type="text" style="width:100%;font-size:15px;padding:11px 13px;border:1.5px solid #DCE8F7;border-radius:12px;background:#F3F8FE;color:#16283E;box-sizing:border-box;" />
+    <div id="modalError" style="color:#E5484D;font-size:12.5px;font-weight:700;margin-top:8px;display:none;"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+      <button id="modalCancel" type="button" style="font-family:inherit;font-weight:700;font-size:13.5px;padding:10px 18px;border-radius:999px;border:1.5px solid #DCE8F7;background:#fff;color:#16283E;cursor:pointer;">Cancel</button>
+      <button id="modalOk" type="button" style="font-family:inherit;font-weight:700;font-size:13.5px;padding:10px 18px;border-radius:999px;border:none;background:linear-gradient(120deg,#175CD3,#2E90FA);color:#fff;cursor:pointer;">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'tickets';
+let tickets = [];
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCAMe4MAnCErvWqx1JUXgxyMHQUMMR_JsU",
+  authDomain: "technet-ticket-system.firebaseapp.com",
+  databaseURL: "https://technet-ticket-system-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "technet-ticket-system",
+  storageBucket: "technet-ticket-system.firebasestorage.app",
+  messagingSenderId: "832400005856",
+  appId: "1:832400005856:web:7a3d375a31b6edeea64e85"
+};
+
+let firebaseReady = false;
+let ticketsRef = null;
+
+function showStorageWarning(detail){
+  const el = document.getElementById('storageWarning');
+  if(el) el.classList.remove('hidden');
+  const d = document.getElementById('storageWarningDetail');
+  if(d) d.textContent = detail ? ('Error: ' + detail) : '';
+}
+function hideStorageWarning(){
+  const el = document.getElementById('storageWarning');
+  if(el) el.classList.add('hidden');
+}
+
+try{
+  if(typeof firebase === 'undefined'){
+    throw new Error('Firebase SDK script load nahi hua (typeof firebase === undefined)');
+  }
+  const app = firebase.initializeApp(firebaseConfig);
+  ticketsRef = firebase.database().ref(STORAGE_KEY);
+  firebaseReady = true;
+}catch(e){
+  showStorageWarning(e && e.message ? e.message : String(e));
+}
+
+function fmtDate(){
+  const d = new Date();
+  return d.toLocaleDateString('en-IN', {weekday:'short', day:'2-digit', month:'short', year:'numeric'});
+}
+document.getElementById('todayDate').textContent = fmtDate();
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// Custom modal — replaces window.prompt(), which is blocked inside the
+// sandboxed artifact iframe and silently does nothing when called.
+function showInputModal(opts){
+  const overlay = document.getElementById('modalOverlay');
+  const titleEl = document.getElementById('modalTitle');
+  const inputEl = document.getElementById('modalInput');
+  const errEl = document.getElementById('modalError');
+  const okBtn = document.getElementById('modalOk');
+  const cancelBtn = document.getElementById('modalCancel');
+
+  titleEl.textContent = opts.title || '';
+  inputEl.value = '';
+  inputEl.type = opts.type || 'text';
+  inputEl.placeholder = opts.placeholder || '';
+  errEl.style.display = 'none';
+  overlay.classList.remove('hidden');
+  setTimeout(()=>inputEl.focus(), 50);
+
+  return new Promise((resolve)=>{
+    function cleanup(result){
+      overlay.classList.add('hidden');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      inputEl.removeEventListener('keydown', onKey);
+      resolve(result);
+    }
+    function onOk(){
+      const val = inputEl.value.trim();
+      if(opts.required && !val){
+        errEl.textContent = opts.errorMsg || 'Ye field zaroori hai';
+        errEl.style.display = 'block';
+        return;
+      }
+      cleanup(val);
+    }
+    function onCancel(){ cleanup(null); }
+    function onKey(e){ if(e.key === 'Enter') onOk(); if(e.key === 'Escape') onCancel(); }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    inputEl.addEventListener('keydown', onKey);
+  });
+}
+
+function startTicketsSync(){
+  if(!firebaseReady || !ticketsRef){
+    showStorageWarning();
+    tickets = [];
+    renderOffice(); renderFieldDropdown(); renderField();
+    return;
+  }
+  ticketsRef.on('value', (snapshot)=>{
+    hideStorageWarning();
+    const val = snapshot.val();
+    tickets = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+    renderOffice();
+    renderFieldDropdown();
+    renderField();
+  }, (err)=>{
+    showStorageWarning(err && err.message ? err.message : String(err));
+    showToast('⚠️ Firebase error — internet/rules check karo');
+  });
+}
+
+async function saveTickets(){
+  if(!firebaseReady || !ticketsRef){
+    showStorageWarning();
+    showToast('⚠️ Save nahi ho raha — Firebase connect nahi hai');
+    return false;
+  }
+  try{
+    await ticketsRef.set(tickets);
+    return true;
+  }catch(e){
+    showToast('⚠️ Save error — internet check karo');
+    return false;
+  }
+}
+
+async function manualSync(){
+  showToast('Sync ho raha hai...');
+  if(ticketsRef){
+    try{
+      const snap = await ticketsRef.once('value');
+      const val = snap.val();
+      tickets = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+      renderOffice(); renderFieldDropdown(); renderField();
+      hideStorageWarning();
+      showToast('Sync ho gaya ✓');
+    }catch(e){
+      showToast('⚠️ Sync fail — internet check karo');
+    }
+  }
+}
+
+function genId(){
+  const n = tickets.length + 1;
+  return 'TASK-' + String(n).padStart(3,'0') + '-' + Math.random().toString(36).slice(2,5).toUpperCase();
+}
+
+// Office PIN lock
+const OFFICE_PIN = '1234';
+let officeUnlocked = false;
+
+function switchToTab(tabEl){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tabEl.classList.add('active');
+  document.getElementById('panel-office').classList.toggle('hidden', tabEl.dataset.tab!=='office');
+  document.getElementById('panel-field').classList.toggle('hidden', tabEl.dataset.tab!=='field');
+}
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', async ()=>{
+    if(tab.dataset.tab === 'office' && !officeUnlocked){
+      const entered = await showInputModal({title:'🔒 Office PIN daalo', placeholder:'PIN', type:'password'});
+      if(entered === null) return;
+      if(entered !== OFFICE_PIN){
+        showToast('❌ Galat PIN');
+        return;
+      }
+      officeUnlocked = true;
+      showToast('✓ Unlocked');
+    }
+    switchToTab(tab);
+  });
+});
+
+// Toggle custom fields
+document.getElementById('f-kaam-type').addEventListener('change', (e)=>{
+  document.getElementById('wrap-kaam-custom').classList.toggle('hidden', e.target.value !== 'Custom');
+});
+document.getElementById('f-time-type').addEventListener('change', (e)=>{
+  document.getElementById('wrap-time-custom').classList.toggle('hidden', e.target.value !== 'Custom');
+});
+
+// Create ticket
+document.getElementById('ticketForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+
+  const kaamTypeVal = document.getElementById('f-kaam-type').value;
+  const kaamType = kaamTypeVal === 'Custom' ? document.getElementById('f-kaam-custom').value.trim() : kaamTypeVal;
+
+  const timeTypeVal = document.getElementById('f-time-type').value;
+  const time = timeTypeVal === 'Custom' ? document.getElementById('f-time-custom').value.trim() : timeTypeVal;
+
+  const ticket = {
+    id: genId(),
+    employee: document.getElementById('f-employee').value.trim(),
+    phone: document.getElementById('f-phone').value.trim(),
+    customer: document.getElementById('f-customer').value.trim(),
+    customerMobile: document.getElementById('f-customer-mobile').value.trim(),
+    address: document.getElementById('f-address').value.trim(),
+    mapsLink: document.getElementById('f-maps').value.trim(),
+    kaamType: kaamType,
+    detail: document.getElementById('f-detail').value.trim(),
+    partName: document.getElementById('f-part').value.trim(),
+    priority: document.getElementById('f-priority').value,
+    cost: document.getElementById('f-cost').value.trim(),
+    date: document.getElementById('f-date').value,
+    time: time,
+    status: 'Pending',
+    notes: '',
+    createdAt: Date.now()
+  };
+  tickets.unshift(ticket);
+  await saveTickets();
+  e.target.reset();
+  document.getElementById('f-priority').value = 'Medium';
+  document.getElementById('wrap-kaam-custom').classList.add('hidden');
+  document.getElementById('wrap-time-custom').classList.add('hidden');
+  showWhatsAppPrompt(ticket);
+  renderOffice();
+  renderFieldDropdown();
+  renderField();
+  btn.disabled = false;
+  showToast('Ticket ' + ticket.id + ' assign ho gaya ✓');
+});
+
+function waMessage(t){
+  let msg = `📋 Naya Task - ${t.id}\n👤 Customer: ${t.customer}${t.customerMobile ? ' (' + t.customerMobile + ')' : ''}\n📍 Address: ${t.address}\n`;
+  if(t.mapsLink) msg += `🗺️ Maps: ${t.mapsLink}\n`;
+  if(t.kaamType) msg += `🔧 Kaam Type: ${t.kaamType}\n`;
+  msg += `📝 Kaam: ${t.detail}\n`;
+  if(t.partName) msg += `🔩 Part Name: ${t.partName}\n`;
+  msg += `⏰ ${t.date || ''} ${t.time || ''}\n🔴 Priority: ${t.priority}`;
+  if(t.cost) msg += `\n💰 Cost: ₹${t.cost}`;
+  return msg;
+}
+
+function waLink(t){
+  const digits = (t.phone || '').replace(/[^0-9]/g, '');
+  const phone = digits.length === 10 ? '91' + digits : digits;
+  const text = encodeURIComponent(waMessage(t));
+  return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+}
+
+function showWhatsAppPrompt(t){
+  const link = waLink(t);
+  const el = document.getElementById('waPrompt');
+  el.innerHTML = `Ticket ${t.id} ban gaya. <a href="${link}" target="_blank" rel="noopener" class="btn small" style="background:#25D366;text-decoration:none;display:inline-block;margin-left:8px;">✆ WhatsApp Bhejo</a>`;
+  el.classList.remove('hidden');
+  setTimeout(()=>el.classList.add('hidden'), 15000);
+}
+
+function statusClass(status){
+  return {
+    'Pending':'status-pending',
+    'Started':'status-started',
+    'Completed':'status-completed',
+    'Issue':'status-issue'
+  }[status] || 'status-pending';
+}
+
+function priorityStampClass(p){
+  return {'High':'high','Medium':'medium','Low':'low'}[p] || 'medium';
+}
+
+function ticketCardHTML(t, opts){
+  opts = opts || {};
+  const mapsBtn = t.mapsLink ? `<a class="maplink" href="${escapeAttr(t.mapsLink)}" target="_blank" rel="noopener">📍 Maps Kholo</a>` : '';
+  const stampClass = t.status === 'Completed' ? 'done' : priorityStampClass(t.priority);
+  const stampText = t.status === 'Completed' ? 'DONE' : t.priority;
+  return `
+  <div class="ticket" data-priority="${escapeAttr(t.priority)}">
+    <div class="ticket-top">
+      <div>
+        <div class="ticket-id">${t.id}${t.date ? ' · ' + t.date : ''}${t.time ? ' · ' + escapeHtml(t.time) : ''}</div>
+        <div class="ticket-employee">${escapeHtml(t.employee)}</div>
+      </div>
+      <div class="stamp ${stampClass}">${stampText}</div>
+    </div>
+    <div class="ticket-row"><b>Customer:</b> ${escapeHtml(t.customer)}${t.customerMobile ? ` · <a href="tel:${escapeAttr(t.customerMobile)}" style="color:var(--blue-1);text-decoration:none;font-weight:700;">📞 ${escapeHtml(t.customerMobile)}</a>` : ''}</div>
+    <div class="ticket-row"><b>Address:</b> ${escapeHtml(t.address)}</div>
+    ${t.kaamType ? `<div class="ticket-row"><b>Kaam Type:</b> ${escapeHtml(t.kaamType)}</div>` : ''}
+    <div class="ticket-row"><b>Kaam:</b> ${escapeHtml(t.detail)}</div>
+    ${t.partName ? `<div class="ticket-row"><b>Part Name:</b> ${escapeHtml(t.partName)}</div>` : ''}
+    ${t.cost ? `<div class="ticket-row"><b>Cost:</b> ₹${escapeHtml(t.cost)}</div>` : ''}
+    <div class="ticket-links">${mapsBtn}${!opts.employeeView ? `<a class="maplink" style="color:#1f8a4c;border-color:#1f8a4c;" href="${waLink(t)}" target="_blank" rel="noopener">✆ WhatsApp Bhejo</a>` : ''}</div>
+    ${t.notes ? `<div class="note-box">📝 ${escapeHtml(t.notes)}</div>` : ''}
+    <div class="ticket-footer">
+      <span class="status-pill ${statusClass(t.status)}">${t.status}</span>
+      ${opts.employeeView ? employeeActionsHTML(t) : ''}
+    </div>
+  </div>`;
+}
+
+function employeeActionsHTML(t){
+  if(t.status === 'Completed') return '';
+  let btns = '';
+  if(t.status === 'Pending'){
+    btns += `<button class="btn small secondary" onclick="updateStatus('${t.id}','Started')">Start Karo</button>`;
+  }
+  btns += `<button class="btn small green" onclick="markComplete('${t.id}')">Complete ✓</button>`;
+  btns += `<button class="btn small" style="background:var(--stamp-red)" onclick="reportIssue('${t.id}')">Issue Report</button>`;
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;">${btns}</div>`;
+}
+
+async function updateStatus(id, status){
+  const t = tickets.find(x=>x.id===id);
+  if(!t) return;
+  t.status = status;
+  await saveTickets();
+  renderOffice(); renderField();
+  showToast(id + ' → ' + status);
+}
+
+async function markComplete(id){
+  const note = await showInputModal({title:'Koi note add karna hai? (optional)', placeholder:'Note (optional)'});
+  if(note === null) return;
+  const t = tickets.find(x=>x.id===id);
+  if(!t) return;
+  t.status = 'Completed';
+  if(note) t.notes = note;
+  await saveTickets();
+  renderOffice(); renderField();
+  showToast(id + ' complete ho gaya ✓');
+}
+
+async function reportIssue(id){
+  const note = await showInputModal({title:'Issue kya hai? Likho:', placeholder:'Issue detail', required:true, errorMsg:'Issue likhna zaroori hai'});
+  if(note === null || !note) return;
+  const t = tickets.find(x=>x.id===id);
+  if(!t) return;
+  t.status = 'Issue';
+  t.notes = note;
+  await saveTickets();
+  renderOffice(); renderField();
+  showToast(id + ' — issue report ho gaya');
+}
+
+function renderOffice(){
+  const el = document.getElementById('officeList');
+  if(tickets.length === 0){
+    el.innerHTML = '<div class="empty">Abhi koi ticket nahi bana. Upar form bhar ke pehla task assign karo.</div>';
+  } else {
+    el.innerHTML = tickets.map(t=>ticketCardHTML(t,{employeeView:false})).join('');
+  }
+  renderStats();
+}
+
+function renderStats(){
+  const total = tickets.length;
+  const done = tickets.filter(t=>t.status==='Completed').length;
+  const pending = tickets.filter(t=>t.status==='Pending').length;
+  const issue = tickets.filter(t=>t.status==='Issue').length;
+  document.getElementById('statsBox').innerHTML = `
+    <div class="stat-row">
+      <div class="stat-chip"><div class="num">${total}</div><div class="lbl">Total</div></div>
+      <div class="stat-chip"><div class="num">${pending}</div><div class="lbl">Pending</div></div>
+      <div class="stat-chip"><div class="num">${done}</div><div class="lbl">Done</div></div>
+      <div class="stat-chip"><div class="num">${issue}</div><div class="lbl">Issue</div></div>
+    </div>`;
+}
+
+function emailBackup(){
+  if(tickets.length === 0){ showToast('Koi data nahi hai bhejne ke liye'); return; }
+  const subject = 'TECHNET SOLUTION — Tickets Backup (' + new Date().toLocaleDateString('en-IN') + ')';
+  let body = `TECHNET SOLUTION — Ticket Backup\nTotal Tickets: ${tickets.length}\nDate: ${new Date().toLocaleDateString('en-IN')}\n\n`;
+  tickets.forEach(t=>{
+    body += `--------------------------------\n`;
+    body += `${t.id} | ${t.status}\n`;
+    body += `Employee: ${t.employee}${t.phone ? ' (' + t.phone + ')' : ''}\n`;
+    body += `Customer: ${t.customer}${t.customerMobile ? ' (' + t.customerMobile + ')' : ''}\n`;
+    body += `Address: ${t.address}\n`;
+    if(t.mapsLink) body += `Maps: ${t.mapsLink}\n`;
+    if(t.kaamType) body += `Kaam Type: ${t.kaamType}\n`;
+    body += `Kaam: ${t.detail}\n`;
+    if(t.partName) body += `Part Name: ${t.partName}\n`;
+    body += `Priority: ${t.priority} | Date: ${t.date || '-'} ${t.time || ''}\n`;
+    if(t.cost) body += `Cost: ₹${t.cost}\n`;
+    if(t.notes) body += `Note: ${t.notes}\n`;
+  });
+  body += `\n--------------------------------\nNote: CSV/JSON file is email ke saath manually attach kar sakte ho (pehle download karke).`;
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(gmailUrl, '_blank');
+  showToast('Gmail khul raha hai — data pre-filled hai, Send dabao');
+}
+
+function downloadFile(filename, content, mime){
+  const blob = new Blob([content], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportExcel(){
+  if(tickets.length === 0){ showToast('Koi data nahi hai export karne ke liye'); return; }
+  const rows = tickets.map(t=>({
+    'Ticket ID': t.id,
+    'Employee': t.employee,
+    'Phone': t.phone,
+    'Customer': t.customer,
+    'Customer Mobile': t.customerMobile,
+    'Address': t.address,
+    'Maps Link': t.mapsLink,
+    'Kaam Type': t.kaamType,
+    'Kaam Detail': t.detail,
+    'Part Name': t.partName,
+    'Priority': t.priority,
+    'Cost': t.cost,
+    'Date': t.date,
+    'Time': t.time,
+    'Status': t.status,
+    'Notes': t.notes
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [
+    {wch:16},{wch:16},{wch:14},{wch:16},{wch:16},{wch:26},{wch:30},{wch:16},{wch:30},{wch:20},{wch:10},{wch:10},{wch:12},{wch:16},{wch:12},{wch:24}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Tickets');
+  XLSX.writeFile(wb, 'technet-tickets-' + Date.now() + '.xlsx');
+  showToast('Excel file download ho gaya');
+}
+
+function exportJSON(){
+  if(tickets.length === 0){ showToast('Koi data nahi hai export karne ke liye'); return; }
+  downloadFile('tickets-backup-' + Date.now() + '.json', JSON.stringify(tickets, null, 2), 'application/json');
+  showToast('JSON backup download ho gaya');
+}
+
+function renderFieldDropdown(){
+  const sel = document.getElementById('fieldEmployeeSelect');
+  const current = sel.value;
+  const names = [...new Set(tickets.map(t=>t.employee))].sort();
+  sel.innerHTML = '<option value="">— Naam chuno —</option>' + names.map(n=>`<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('');
+  if(names.includes(current)) sel.value = current;
+}
+
+document.getElementById('fieldEmployeeSelect').addEventListener('change', renderField);
+
+function renderField(){
+  const sel = document.getElementById('fieldEmployeeSelect').value;
+  const el = document.getElementById('fieldList');
+  if(!sel){
+    el.innerHTML = '<div class="empty">Apna naam select karo upar se, tumhare saare tasks yahan dikhenge.</div>';
+    return;
+  }
+  const mine = tickets.filter(t=>t.employee === sel);
+  if(mine.length === 0){
+    el.innerHTML = '<div class="empty">Abhi koi task assign nahi hua.</div>';
+    return;
+  }
+  el.innerHTML = mine.map(t=>ticketCardHTML(t,{employeeView:true})).join('');
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+// Default landing view: Field tab (Office stays locked until PIN entered)
+const defaultFieldTab = document.querySelector('.tab[data-tab="field"]');
+if(defaultFieldTab) switchToTab(defaultFieldTab);
+
+startTicketsSync();
+</script>
+</body>
+</html>
